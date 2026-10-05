@@ -39,7 +39,3 @@ yarn-error.log*
 # typescript
 *.tsbuildinfo
 next-env.d.ts
-
-# local coding-assistant compatibility files
-AGENTS.md
-CLAUDE.md
