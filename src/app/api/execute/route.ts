@@ -3,6 +3,9 @@ import { z } from "zod";
 import { MAX_FILE_BYTES, validateCsv } from "@/lib/csv";
 import { validateGeneratedPython } from "@/lib/python-policy";
 import { SignatureError, verifyGeneratedCode } from "@/lib/code-signature";
+import { analysisResultSchema, type AnalysisResult } from "@/lib/analysis-result";
+import { enforceBotProtection } from "@/lib/abuse-protection";
+import { collectBoundedCommandOutput, CommandOutputLimitError } from "@/lib/bounded-command-output";
 
 export const runtime = "nodejs";
 export const maxDuration = 45;
@@ -17,38 +20,6 @@ const requestSchema = z.object({
   signature: z.string().min(1).max(200),
 });
 
-const analysisResultSchema = z.object({
-  summary: z.string().min(1).max(2_000),
-  metrics: z.array(z.object({
-    label: z.string().min(1).max(100),
-    value: z.union([z.string().max(200), z.number().finite(), z.boolean()])
-      .transform((value) => typeof value === "boolean" ? String(value) : value),
-  })).max(20),
-  chart: z.object({
-    type: z.string().min(1).max(30).transform(() => "bar" as const),
-    title: z.string().min(1).max(200),
-    labels: z.array(z.string().max(100)).min(1).max(30),
-    series: z.array(z.object({
-      name: z.string().min(1).max(100),
-      data: z.array(z.preprocess(
-        (value) => typeof value === "string" && value.trim() !== "" ? Number(value) : value,
-        z.number().finite(),
-      )).min(1).max(30),
-    })).min(1).max(6),
-  }).superRefine((chart, context) => {
-    chart.series.forEach((series, index) => {
-      if (series.data.length !== chart.labels.length) {
-        context.addIssue({
-          code: "custom",
-          path: ["series", index, "data"],
-          message: "Chart series must match the number of labels.",
-        });
-      }
-    });
-  }),
-  notes: z.array(z.string().min(1).max(500)).max(12).default([]),
-});
-
 class ExecutionError extends Error {
   constructor(message: string, readonly status = 422) {
     super(message);
@@ -61,8 +32,11 @@ export async function POST(request: Request) {
     return Response.json({ error: "Request payload is too large." }, { status: 413 });
   }
 
+  const blockedResponse = await enforceBotProtection();
+  if (blockedResponse) return blockedResponse;
+
   let sandbox: Sandbox | undefined;
-  let result: z.infer<typeof analysisResultSchema> | undefined;
+  let result: AnalysisResult | undefined;
   let failure: { message: string; status: number } | undefined;
   let exitCode: number | null = null;
   let commandDurationMs: number | null = null;
@@ -104,20 +78,22 @@ export async function POST(request: Request) {
     ]);
     lifecycle.push("CSV and reviewed program added");
 
-    const command = await sandbox.runCommand(
-      "python3",
-      ["/vercel/sandbox/analysis.py"],
-      { timeoutMs: 20_000 },
-    );
-    exitCode = command.exitCode;
-    commandDurationMs = command.durationMs ?? null;
-    const [stdout, stderr] = await Promise.all([command.stdout(), command.stderr()]);
-    stdoutBytes = Buffer.byteLength(stdout, "utf8");
+    const command = await sandbox.runCommand({
+      cmd: "python3",
+      args: ["/vercel/sandbox/analysis.py"],
+      timeoutMs: 20_000,
+      detached: true,
+    });
+    const commandOutput = await collectBoundedCommandOutput(command, {
+      stdoutBytes: MAX_STDOUT_BYTES,
+      stderrBytes: MAX_STDERR_BYTES,
+    });
+    const { stdout, stderr } = commandOutput;
+    exitCode = commandOutput.exitCode;
+    commandDurationMs = commandOutput.durationMs;
+    stdoutBytes = commandOutput.stdoutBytes;
 
-    if (stdoutBytes > MAX_STDOUT_BYTES || Buffer.byteLength(stderr, "utf8") > MAX_STDERR_BYTES) {
-      throw new ExecutionError("The program produced more output than the safety limit allows.");
-    }
-    if (command.exitCode !== 0) {
+    if (exitCode !== 0) {
       const detail = stderr.trim().slice(0, 500);
       throw new ExecutionError(detail ? `Python exited with an error: ${detail}` : "Python exited with an error.");
     }
@@ -144,6 +120,8 @@ export async function POST(request: Request) {
       failure = { message: "The CSV or generated program did not pass validation.", status: 400 };
     } else if (error instanceof SignatureError) {
       failure = { message: error.message, status: 403 };
+    } else if (error instanceof CommandOutputLimitError) {
+      failure = { message: "The program produced more output than the safety limit allows.", status: 422 };
     } else if (error instanceof ExecutionError) {
       failure = { message: error.message, status: error.status };
     } else {

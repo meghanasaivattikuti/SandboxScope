@@ -1,205 +1,138 @@
 # SandboxScope
 
-SandboxScope is a CSV analysis demo that makes generated code visible before it runs. A user uploads data, asks a question, reviews the generated Python, and chooses when to execute it inside Vercel Sandbox.
+SandboxScope turns a question about a CSV into reviewable Python, runs it in a short-lived Vercel Sandbox, and returns both the analysis and an execution receipt.
 
-The project demonstrates a clear pattern for model-generated code:
+Generated-code demos often hide the most important step: what actually ran. I built SandboxScope to make that step visible. The user reviews the plan and Python before approving execution, and the result shows the runtime controls observed during the run.
 
-1. Keep generation transparent.
-2. Validate the code before execution.
-3. Run it in an isolated, temporary environment.
-4. Show the result and the controls applied during the run.
+## How it works
 
-## What the project demonstrates
-
-SandboxScope is not primarily a CSV dashboard. CSV analysis provides a simple way to show the complete lifecycle of generated code.
-
-The application demonstrates:
-
-- A review step between code generation and execution
-- Server-side validation that cannot be bypassed by the browser
-- Signed programs, so only server-generated code can be executed
-- Isolated Python execution with outbound network access blocked
-- Short execution limits and bounded output
-- Cleanup after successful and failed runs
-- A visible execution record showing runtime, network policy, program status, duration, and cleanup status
-
-## User flow
-
-1. **Choose data**
-   - Upload a CSV or use the included sample file.
-   - The browser validates file size, row count, column count, headers, and row shape.
-
-2. **Ask a question**
-   - Enter a plain-language question about the data.
-   - Only the column names, inferred types, three sample rows, and the question are sent for generation.
-
-3. **Review the program**
-   - The AI SDK returns a structured plan, required columns, assumptions, and Python code.
-   - The server checks imports, file access, code size, blocked operations, and the required JSON output pattern.
-
-4. **Run in Vercel Sandbox**
-   - The user explicitly starts execution.
-   - The server verifies the program's signature, so code edited in the browser is rejected before a Sandbox is created.
-   - The server validates the CSV and Python again.
-   - A temporary Python 3.13 Sandbox is created with outbound network access denied.
-
-5. **Inspect the result**
-   - The result is validated before it is displayed.
-   - The Sandbox is stopped in a `finally` block.
-   - The UI displays the answer, metrics, chart, notes, and execution details.
-
-## Architecture
+1. Upload a CSV or load the included retail dataset.
+2. Ask a question in plain English.
+3. Review the proposed analysis, assumptions, and generated Python.
+4. Approve execution in an isolated Python 3.13 Sandbox.
+5. Inspect the answer, visualization, and execution receipt.
 
 ```text
 Browser
   |
-  | CSV schema, three sample rows, and question
+  | Question, schema, and three sample rows
+  v
+Vercel WAF
+  | 10 requests per minute per IP
   v
 POST /api/generate
-  |
+  | BotID verification
   | AI SDK structured output through AI Gateway
+  | Static policy check and HMAC signature
   v
-Signed plan and Python
+Reviewable plan and Python
   |
-  | User reviews and approves execution
+  | User approves execution
   v
 POST /api/execute
-  |
-  | Server verifies the signature, then validates the full CSV and Python again
+  | BotID and signature verification
+  | Full CSV and code validation
   v
 Vercel Sandbox
   | Python 3.13
   | Outbound network denied
-  | Temporary filesystem
   | 20-second command limit
+  | Streaming output limits
   v
-Validated JSON result
-  |
-  | Sandbox stopped and temporary files removed
-  v
-Result and execution details shown in the browser
+Validated result and execution receipt
 ```
 
-## Vercel products used
+## Vercel stack
 
-| Product | Responsibility |
+| Product | Role |
 | --- | --- |
-| Vercel Sandbox | Runs reviewed Python in a fresh, isolated environment. |
-| Vercel OIDC | Provides short-lived access to Sandbox without storing a permanent Sandbox credential. |
-| AI SDK | Produces a structured analysis plan and Python program. |
-| AI Gateway | Routes the model request through one managed endpoint. |
+| Vercel Sandbox | Runs Python in a fresh, non-persistent environment. |
+| Vercel OIDC | Gives the Function short-lived access to Sandbox without a stored Sandbox credential. |
+| AI SDK | Produces a typed analysis plan and Python program. |
+| AI Gateway | Routes the model request through a managed endpoint. |
+| BotID | Checks both costly routes before model or Sandbox work begins. |
+| Vercel WAF | Limits repeated requests before they reach application code. |
 
 ## Execution controls
 
-The static code check improves output quality, but it is not the primary security boundary. Runtime isolation is handled by Vercel Sandbox.
+The static policy check is a preflight control, not the isolation boundary. Vercel Sandbox provides the runtime boundary.
 
-Every generated program is signed with HMAC-SHA256 before it reaches the browser. `/api/execute` verifies that signature before it creates a Sandbox, so the endpoint runs only programs this server generated, and only within 30 minutes of generation.
-
-| Control | Current setting |
+| Control | Setting |
 | --- | --- |
 | Runtime | Python 3.13 |
 | Persistence | Disabled |
 | Outbound network | Denied |
 | Sandbox lifetime | 30 seconds |
 | Command limit | 20 seconds |
-| Input path | `/vercel/sandbox/input.csv` |
-| Program path | `/vercel/sandbox/analysis.py` |
+| CSV limit | 2 MB, 10,000 rows, 50 columns |
 | Generated code limit | 12,000 characters |
-| Standard output limit | 100 KB |
-| Standard error limit | 50 KB |
-| Cleanup | `sandbox.stop()` in a `finally` block |
-| Program signature | HMAC-SHA256, 30-minute validity |
+| Standard output | Command terminated above 100 KB |
+| Standard error | Command terminated above 50 KB |
+| Program approval | HMAC-SHA256 signature valid for 30 minutes |
+| Automated abuse | BotID Basic on generation and execution |
+| Request rate | Vercel WAF, 10 requests per minute per IP |
+| Cleanup | `sandbox.stop()` requested in a `finally` block and reported in the receipt |
 
-No application secrets are passed into the execution environment.
+The execution route verifies the signature before creating a Sandbox. Code edited after generation is rejected before infrastructure is allocated. No application secrets are passed into the execution environment.
 
-## CSV limits
+## Data boundaries
 
-| Limit | Value |
-| --- | --- |
-| File size | 2 MB |
-| Data rows | 10,000 |
-| Columns | 50 |
-
-Validation rejects:
-
-- Empty files
-- Missing or duplicate headers
-- More than 50 columns
-- More than 10,000 data rows
-- Rows with inconsistent column counts
-- Unclosed quoted fields
-- Files larger than 2 MB
-
-## Data handling
-
-The generation and execution steps use different data boundaries.
-
-### During generation
-
-The model receives:
+Generation receives only:
 
 - File name
 - Row and column counts
-- Column names
-- Inferred column types
+- Column names and inferred types
 - Three sample rows
-- The user question
+- The user's question
 
-The full CSV is not sent during generation.
+The full CSV is sent only after the user approves execution. The server validates it again, writes it to the temporary Sandbox, and runs the reviewed program with outbound networking disabled.
 
-### During execution
+## Validation and tests
 
-The full CSV and reviewed Python program are sent to the server, validated again, and written into the temporary Sandbox. The Sandbox has no outbound network access and is stopped after the run.
+The server validates the request, generated Python, CSV structure, and returned JSON independently of the browser. The focused test suite covers:
 
-## Technology
+- Valid program signatures
+- Code tampering
+- Signature expiration
+- Disallowed imports hidden in compound statements
+- Invalid visualization output
+- BotID rejection
+- Output collection within byte limits
+- Command termination when an output limit is exceeded
 
-- Next.js 16
-- React 19
-- TypeScript
-- Vercel AI SDK
-- Vercel AI Gateway
-- Vercel Sandbox SDK
-- Zod
-- Tailwind CSS
+Run the checks with:
+
+```bash
+npm test
+npm run lint
+npx tsc --noEmit
+```
 
 ## Local development
 
-### Requirements
+Requirements:
 
 - Node.js 20 or newer
 - npm
-- A Vercel account and linked Vercel project
-- Vercel CLI access through `npx vercel`
+- A Vercel account and linked project
 
-### Setup
-
-Install dependencies:
+Install dependencies and link the project:
 
 ```bash
 npm install
-```
-
-Link the local repository to a Vercel project:
-
-```bash
 npx vercel link
-```
-
-Pull the development environment, including the OIDC token used by the Sandbox SDK:
-
-```bash
 npx vercel env pull
 ```
 
-Set a signing secret used to sign generated programs. Add it to `.env.local` locally and to the Vercel project environment before deploying:
+Create a signing secret locally, then add the same variable to the Vercel project environment:
 
 ```bash
 echo "CODE_SIGNING_SECRET=\"$(openssl rand -hex 32)\"" >> .env.local
 ```
 
-`/api/generate` fails closed if this variable is missing or shorter than 32 characters.
+`/api/generate` fails closed when `CODE_SIGNING_SECRET` is missing or shorter than 32 characters. BotID permits local development requests by default and verifies browser requests after deployment.
 
-Start the development server:
+Start the application:
 
 ```bash
 npm run dev
@@ -207,37 +140,27 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000).
 
-Do not commit `.env.local`. Environment files and the `.vercel` directory are ignored by Git.
-
-## Available commands
-
-| Command | Purpose |
-| --- | --- |
-| `npm run dev` | Start the local development server. |
-| `npm run build` | Create a production build. |
-| `npm run start` | Start the production server after a build. |
-| `npm run lint` | Run ESLint. |
-| `npx tsc --noEmit` | Check TypeScript without creating output files. |
-
 ## Project structure
 
 ```text
 src/
   app/
     api/
-      generate/route.ts    Generate and validate the Python program
-      execute/route.ts     Create, run, and stop the Sandbox
+      generate/route.ts
+      execute/route.ts
     components/
       analysis-workspace.tsx
     page.tsx
   lib/
-    csv.ts                 Shared CSV parsing and validation
-    python-policy.ts       Generated Python checks
-    code-signature.ts      Signs and verifies generated programs
+    abuse-protection.ts
+    analysis-result.ts
+    bounded-command-output.ts
+    code-signature.ts
+    csv.ts
+    python-policy.ts
+  instrumentation-client.ts
+tests/
+  security-contract.test.ts
 public/
-  retail-performance.csv  Sample dataset
+  retail-performance.csv
 ```
-
-## Scope
-
-SandboxScope is a portfolio prototype, not a claim of production readiness. The project reports controls that are configured and observed during execution. It does not label generated code as safe simply because it passed the static code check.

@@ -13,8 +13,8 @@ export default function Home() {
           <div><strong>SandboxScope</strong><span>Controlled code execution</span></div>
         </div>
         <div className="header-actions">
-          <span className="prototype-status"><i />Prototype</span>
-          <a href="https://github.com/meghanasaivattikuti" target="_blank" rel="noreferrer">GitHub ↗</a>
+          <span className="demo-status"><i />Live demo</span>
+          <a href="https://github.com/meghanasaivattikuti/SandboxScope" target="_blank" rel="noreferrer">GitHub ↗</a>
         </div>
       </header>
 
@@ -26,7 +26,7 @@ export default function Home() {
 
       <section className="closing-blurb">
         <div>
-          <p>Project perspective</p>
+          <p>Design goal</p>
           <h2>Generated code you can inspect</h2>
         </div>
         <p>SandboxScope shows a practical way to use model-generated code without hiding how it works. Users can review the program before it runs, execution is isolated and time-limited, and every completed run returns a clear record of what happened.</p>
@@ -66,6 +66,14 @@ export default function Home() {
             <span className="primitive-icon">↗</span>
             <div><strong>AI Gateway</strong><p>Sends model requests through one managed endpoint.</p></div>
           </article>
+          <article>
+            <span className="primitive-icon">ID</span>
+            <div><strong>BotID</strong><p>Checks both costly API routes before model or Sandbox work begins.</p></div>
+          </article>
+          <article>
+            <span className="primitive-icon">WAF</span>
+            <div><strong>Vercel WAF</strong><p>Limits repeated requests before they reach application code.</p></div>
+          </article>
         </div>
 
         <div className="policy-strip" aria-label="Sandbox execution controls">
@@ -73,6 +81,8 @@ export default function Home() {
           <span>Outbound network denied</span>
           <span>20-second command limit</span>
           <span>30-second Sandbox limit</span>
+          <span>Automated requests checked</span>
+          <span>10 requests per minute per IP</span>
           <span>Cleanup requested after every run</span>
         </div>
       </section>

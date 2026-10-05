@@ -2,6 +2,7 @@ import { generateText, Output } from "ai";
 import { z } from "zod";
 import { validateGeneratedPython } from "@/lib/python-policy";
 import { signGeneratedCode } from "@/lib/code-signature";
+import { enforceBotProtection } from "@/lib/abuse-protection";
 
 export const runtime = "nodejs";
 export const maxDuration = 90;
@@ -50,6 +51,9 @@ export async function POST(request: Request) {
   if (contentLength > 50_000) {
     return Response.json({ error: "Request payload is too large." }, { status: 413 });
   }
+
+  const blockedResponse = await enforceBotProtection();
+  if (blockedResponse) return blockedResponse;
 
   try {
     const input = requestSchema.parse(await request.json());

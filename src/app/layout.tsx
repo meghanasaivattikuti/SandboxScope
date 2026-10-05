@@ -27,13 +27,13 @@ export const metadata: Metadata = {
   openGraph: {
     type: "website",
     siteName: "SandboxScope",
-    title: "SandboxScope — ask your data, see exactly what runs",
+    title: "SandboxScope | Ask your data, see exactly what runs",
     description: DESCRIPTION,
     url: siteUrl,
   },
   twitter: {
     card: "summary_large_image",
-    title: "SandboxScope — ask your data, see exactly what runs",
+    title: "SandboxScope | Ask your data, see exactly what runs",
     description: DESCRIPTION,
   },
 };

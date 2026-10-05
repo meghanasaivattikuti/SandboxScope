@@ -43,8 +43,8 @@ button { font: inherit; }
 .brand-mark i:nth-child(3) { height: 17px; }
 .header-actions { gap: 18px; font-size: 13px; }
 .header-actions a { color: #aaaab2; text-decoration: none; }
-.prototype-status { padding: 6px 9px; border: 1px solid var(--line); border-radius: 999px; color: #8c8c95; }
-.prototype-status i { display: inline-block; width: 5px; height: 5px; margin-right: 6px; border-radius: 50%; background: var(--amber); }
+.demo-status { padding: 6px 9px; border: 1px solid var(--line); border-radius: 999px; color: #8c8c95; }
+.demo-status i { display: inline-block; width: 5px; height: 5px; margin-right: 6px; border-radius: 50%; background: var(--mint); }
 
 .hero { max-width: 750px; padding: 62px 0 34px; }
 .eyebrow { margin: 0 0 12px; color: var(--mint); font-family: var(--font-geist-mono), monospace; font-size: 12px; font-weight: 600; letter-spacing: .13em; text-transform: uppercase; }
@@ -272,7 +272,7 @@ footer span { font-family: var(--font-geist-mono), monospace; }
 
 @media (max-width: 620px) {
   .site-shell { width: min(100% - 28px, 1120px); }
-  .brand span, .prototype-status { display: none; }
+  .brand span, .demo-status { display: none; }
   .hero { padding: 42px 0 27px; }
   .workflow { gap: 7px; padding: 12px; }
   .workflow span { display: none; }
