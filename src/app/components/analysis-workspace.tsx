@@ -403,7 +403,19 @@ export default function AnalysisWorkspace() {
             )}
           </div>
         ) : generationStatus === "generating" ? (
-          <div className="generation-loading"><span aria-hidden="true" /><h3>Preparing the analysis</h3><p>The model receives the column names and three sample rows. The full CSV is sent only when you choose to run the program.</p></div>
+          <div className="generation-loading">
+            <div className="loading-command">
+              <span aria-hidden="true">›_</span>
+              <div><small>AI Gateway</small><h3>Preparing Python for review</h3></div>
+            </div>
+            <div className="loading-progress" aria-hidden="true"><i /></div>
+            <ol aria-label="Analysis preparation steps">
+              <li><b>01</b><span><strong>Verify request</strong><small>BotID and input limits</small></span></li>
+              <li><b>02</b><span><strong>Generate program</strong><small>Plan and Python through AI Gateway</small></span></li>
+              <li><b>03</b><span><strong>Check before review</strong><small>Policy validation and signature</small></span></li>
+            </ol>
+            <p>Only the column names and three sample rows are used here. The full CSV is sent only after you approve execution.</p>
+          </div>
         ) : generationStatus === "failed" ? (
           <div className="generation-failure"><span aria-hidden="true">!</span><h3>Python was not generated</h3><p>{generationError}</p><button type="button" onClick={() => void generatePython()}>Try again</button></div>
         ) : (
