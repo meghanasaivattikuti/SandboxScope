@@ -1,69 +1,83 @@
-import Image from "next/image";
+import AnalysisWorkspace from "./components/analysis-workspace";
+
+function BrandMark() {
+  return <span className="brand-mark" aria-hidden="true"><i /><i /><i /></span>;
+}
 
 export default function Home() {
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert h-5 w-[100px]"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the{" "}
-            <code className="rounded bg-black/[.06] px-1.5 py-0.5 font-mono text-[0.9em] dark:bg-white/[.08]">
-              page.tsx
-            </code>{" "}
-            file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <main className="site-shell">
+      <header className="topbar">
+        <div className="brand">
+          <BrandMark />
+          <div><strong>SandboxScope</strong><span>Controlled code execution</span></div>
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert h-[14px] w-4"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={14}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+        <div className="header-actions">
+          <span className="prototype-status"><i />Prototype</span>
+          <a href="https://github.com/meghanasaivattikuti" target="_blank" rel="noreferrer">GitHub ↗</a>
         </div>
-      </main>
-    </div>
+      </header>
+
+      <section className="hero">
+        <p className="eyebrow">Sandboxed data analysis</p>
+        <h1>Ask your data. See exactly what runs.</h1>
+        <p>SandboxScope turns a plain-English question into Python, executes it in an isolated Vercel Sandbox, and exposes the controls behind the result.</p>
+      </section>
+
+      <section className="closing-blurb">
+        <div>
+          <p>Project perspective</p>
+          <h2>Generated code you can inspect</h2>
+        </div>
+        <p>SandboxScope shows a practical way to use model-generated code without hiding how it works. Users can review the program before it runs, execution is isolated and time-limited, and every completed run returns a clear record of what happened.</p>
+      </section>
+
+      <nav className="workflow" aria-label="Analysis workflow">
+        <div className="active"><b>1</b><span><small>Input</small>Choose data</span></div>
+        <i aria-hidden="true" />
+        <div><b>2</b><span><small>Prepare</small>Generate Python</span></div>
+        <i aria-hidden="true" />
+        <div><b>3</b><span><small>Execute</small>Run & inspect</span></div>
+      </nav>
+
+      <AnalysisWorkspace />
+
+      <section className="vercel-stack">
+        <div className="stack-heading">
+          <div><p>Implementation</p><h2>Vercel products used</h2></div>
+          <span>Live in this demo</span>
+        </div>
+        <p className="stack-intro">Each product has one clear job in the workflow.</p>
+
+        <div className="primitive-grid">
+          <article>
+            <span className="primitive-icon">›_</span>
+            <div><strong>Vercel Sandbox</strong><p>Runs reviewed Python in a fresh, isolated environment.</p></div>
+          </article>
+          <article>
+            <span className="primitive-icon">◇</span>
+            <div><strong>Vercel OIDC</strong><p>Provides short-lived access to Sandbox without storing a permanent credential.</p></div>
+          </article>
+          <article>
+            <span className="primitive-icon">AI</span>
+            <div><strong>AI SDK</strong><p>Turns the question into a structured plan and Python program.</p></div>
+          </article>
+          <article>
+            <span className="primitive-icon">↗</span>
+            <div><strong>AI Gateway</strong><p>Sends model requests through one managed endpoint.</p></div>
+          </article>
+        </div>
+
+        <div className="policy-strip" aria-label="Sandbox execution controls">
+          <strong>Execution controls</strong>
+          <span>Outbound network denied</span>
+          <span>20-second command limit</span>
+          <span>30-second Sandbox limit</span>
+          <span>Cleanup requested after every run</span>
+        </div>
+      </section>
+
+      <footer><span>SandboxScope</span><p>Generated code should be inspectable, not invisible.</p></footer>
+    </main>
   );
 }
